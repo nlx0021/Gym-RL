@@ -33,3 +33,18 @@ class MLP(nn.Module):
         value = self.value_out_layer(x)
         
         return value, policy
+    
+    
+
+if __name__ == '__main__':
+    
+    observation = np.array([ 0.0047967 ,  1.41536   ,  0.48583737,  0.19731522, -0.00555138,
+       -0.11004938,  0.        ,  0.        ],)
+    observation = torch.tensor(observation, dtype=torch.float32)   # (8,)
+    
+    net = MLP()
+    value, policy = net(observation)
+    import pdb; pdb.set_trace()
+    observation = observation[None, ...].repeat_interleave(3, dim=0)
+    value, policy = net(observation)
+    import pdb; pdb.set_trace()
