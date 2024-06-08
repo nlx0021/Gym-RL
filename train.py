@@ -11,27 +11,21 @@ from algorithm.PPO import PPO
 
 if __name__ == '__main__':
     
-    # Exp dir.
-    exp_name = "LunarLander-v2"
-    exp_dir = os.path.join("./exp", exp_name)
+    conf_path = "./config/LunarLander-v2.yaml"
+    with open(conf_path, 'r', encoding="utf-8") as f:
+        kwargs = yaml.load(f.read(), Loader=yaml.FullLoader)        
     
-    if not os.path.exists(exp_dir):
-        os.makedirs(exp_dir)
-        
-    # Training.
-    net = MLP()
-    vec_env = gym.vector.make("LunarLander-v2", num_envs=8)
-    algo = PPO(T=32, gamma=.99, lam=.95, epsilon=0.1, e_loss_weight=.01)
-    trainer = Trainer(net, algo, lr=1e-3, exp_dir=exp_dir)
+    exp_dir = kwargs["trainer"]["exp_dir"]
+    net = MLP(**kwargs["net"])
+    vec_env = gym.vector.make(kwargs["env"]["env_name"], num_envs=kwargs["env"]["num_envs"])
+    algo = PPO(**kwargs["algo"])
+    trainer = Trainer(net, algo, vec_env, **kwargs["trainer"])
     
     # Resuming.
-    ckpt_path = "exp/LunarLander-v2/1717780164/ckpt/first.pt"
-    trainer.load_model(ckpt_path=ckpt_path)
-    
-    trainer.train(vec_env=vec_env,
-                  iters_n=10000,
-                  log_freq=100,
-                  local_steps=32,
-                  steps_n=32)
-    
-    trainer.save_model("first.pt")
+    ckpt_path = kwargs["resume"]["ckpt_path"]
+    if ckpt_path:
+        trainer.load_model(ckpt_path=ckpt_path) 
+        
+    # Training.
+    trainer.train(**kwargs["train"])   
+    trainer.save_model("Final.pt")

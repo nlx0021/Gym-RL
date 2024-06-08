@@ -89,11 +89,12 @@ class PPO():
             v_loss = self.mse_loss(cur_target, cur_values)
             
             # 4. Compute e-loss.
-            e_loss = -torch.mean(torch.sum(cur_policies * torch.log(cur_policies), dim=2))
+            min_real = torch.finfo(cur_policies.dtype).min
+            e_loss = -torch.mean(torch.sum(torch.clamp(cur_policies, min=min_real) * torch.log(cur_policies), dim=2))
             # import pdb; pdb.set_trace()
             
             # 5. Update.
-            loss = clip_loss + self.v_loss_weight * v_loss
+            loss = clip_loss + self.v_loss_weight * v_loss - self.e_loss_weight * e_loss
             optimizer.zero_grad()
             loss.backward()
             torch.nn.utils.clip_grad_norm_(net.parameters(), 0.5)

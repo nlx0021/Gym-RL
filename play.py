@@ -1,4 +1,5 @@
 import os
+import yaml
 import torch
 import numpy as np
 import gymnasium as gym
@@ -11,9 +12,13 @@ from algorithm.PPO import PPO
  
 if __name__ == '__main__':
     
-    env = gym.make("LunarLander-v2", render_mode="human")
+    conf_path = "./config/LunarLander-v2.yaml"
+    with open(conf_path, 'r', encoding="utf-8") as f:
+        kwargs = yaml.load(f.read(), Loader=yaml.FullLoader)        
+    
+    net = MLP(**kwargs["net"])
+    env = gym.make(kwargs["env"]["env_name"], render_mode="human") 
     player = Player()
-    net = MLP()
     
     ckpt_path = "exp/LunarLander-v2/1717780164/ckpt/first.pt"
     ckpt = torch.load(ckpt_path)

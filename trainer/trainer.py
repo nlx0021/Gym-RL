@@ -20,11 +20,13 @@ class Trainer():
     def __init__(self,
                  net: MLP,
                  algo,
+                 vec_env: gym.vector.VectorEnv,
                  lr=1e-4,
                  exp_dir="./exp/LunarLander-v2"):
         
         self.net = net
         self.algo = algo
+        self.vec_env = vec_env
         self.optimizer = torch.optim.Adam(net.parameters(),
                                           lr=lr)
         self.exp_dir = exp_dir
@@ -54,15 +56,16 @@ class Trainer():
         
     
     def train(self,
-              vec_env: gym.vector.VectorEnv,
               iters_n=10000,
               log_freq=20,
+              save_freq=5000,
               local_steps=8,
               steps_n=20):
         
         # Pseudo code.
         net = self.net
         algo = self.algo
+        vec_env = self.vec_env
         optimizer = self.optimizer
         net.train()
         
@@ -133,6 +136,9 @@ class Trainer():
                 self.log_writer.add_scalar("mean reward", mean_reward, global_step=iter)
                 for key, loss in info.items():
                     self.log_writer.add_scalar(key, loss, global_step=iter)
+                    
+            if iter % save_freq == 0 and iter != 0:
+                self.save_model("%7d.pt" % iter)
             
 
 if __name__ == '__main__':
