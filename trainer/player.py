@@ -1,5 +1,8 @@
+import torch
 import numpy as np
 import gymnasium as gym
+
+from utils.utils import *
 
 class Player():
     
@@ -10,4 +13,13 @@ class Player():
               net,
               env):
         
-        pass
+        observation, info = env.reset()        
+        while True:
+                # action = env.action_space.sample()  # agent policy that uses the observation and info
+                observation = torch.tensor(observation, dtype=torch.float32)
+                value, policy = net(observation)
+                action = sample_action(policy)
+                observation, reward, terminated, truncated, info = env.step(action)
+                # import pdb; pdb.set_trace()
+                if terminated or truncated:
+                    observation, info = env.reset()        
