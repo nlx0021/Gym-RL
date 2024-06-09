@@ -29,7 +29,7 @@ class MLP(nn.Module):
             x = layer(x)
             x = F.tanh(x)
         policy = self.policy_out_layer(x)
-        policy = F.softmax(policy, dim=1)
+        policy = F.softmax(policy, dim=-1)
         value = self.value_out_layer(x)
         
         return value, policy
