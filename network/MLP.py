@@ -24,12 +24,12 @@ class MLP(nn.Module):
     def forward(self, x):
         
         x = self.start_layer(x)
-        x = F.relu(x)
+        x = F.tanh(x)
         for layer in self.inner_layer_seq:
             x = layer(x)
-            x = F.relu(x)
+            x = F.tanh(x)
         policy = self.policy_out_layer(x)
-        policy = F.softmax(policy)
+        policy = F.softmax(policy, dim=1)
         value = self.value_out_layer(x)
         
         return value, policy

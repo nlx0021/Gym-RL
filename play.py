@@ -17,10 +17,11 @@ if __name__ == '__main__':
         kwargs = yaml.load(f.read(), Loader=yaml.FullLoader)        
     
     net = MLP(**kwargs["net"])
+    net = net.eval()
     env = gym.make(kwargs["env"]["env_name"], render_mode="human") 
     player = Player()
     
-    ckpt_path = "exp/LunarLander-v2/1717780164/ckpt/first.pt"
+    ckpt_path = "exp/LunarLander-v2/1717836302/ckpt/   5000.pt"
     ckpt = torch.load(ckpt_path)
     net.load_state_dict(ckpt["model"])
     

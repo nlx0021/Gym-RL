@@ -18,7 +18,7 @@ class PPO():
         self.gamma = gamma
         self.lam = lam
         self.epsilon = epsilon
-        self.mse_loss = torch.nn.MSELoss()
+        self.value_loss = torch.nn.MSELoss()
         self.v_loss_weight = v_loss_weight
         self.e_loss_weight = e_loss_weight
         
@@ -64,6 +64,8 @@ class PPO():
         cur_adv = torch.matmul(self.weight_mat_list[T-1], cur_delta)      # [T-1, B]
         cur_adv = cur_adv.detach()
         # import pdb; pdb.set_trace()
+        cur_target = cur_rewards + gamma * next_values
+        cur_target = cur_target[..., 0].detach()        
         
         cur_old_pis = torch.stack(old_pis[:-1])   # [T-1, B]
         cur_observations = torch.stack(observations[:-1])
@@ -84,9 +86,7 @@ class PPO():
             )
             
             # 3. Compute v-loss.
-            cur_target = cur_rewards + gamma * next_values
-            cur_target = cur_target[..., 0].detach()
-            v_loss = self.mse_loss(cur_target, cur_values)
+            v_loss = self.value_loss(cur_target, cur_values)
             
             # 4. Compute e-loss.
             min_real = torch.finfo(cur_policies.dtype).min

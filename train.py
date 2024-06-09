@@ -11,7 +11,7 @@ from algorithm.PPO import PPO
 
 if __name__ == '__main__':
     
-    conf_path = "./config/LunarLander-v2.yaml"
+    conf_path = "./config/CartPole-v1.yaml"
     with open(conf_path, 'r', encoding="utf-8") as f:
         kwargs = yaml.load(f.read(), Loader=yaml.FullLoader)        
     
@@ -19,7 +19,7 @@ if __name__ == '__main__':
     net = MLP(**kwargs["net"])
     vec_env = gym.vector.make(kwargs["env"]["env_name"], num_envs=kwargs["env"]["num_envs"])
     algo = PPO(**kwargs["algo"])
-    trainer = Trainer(net, algo, vec_env, **kwargs["trainer"])
+    trainer = Trainer(net, algo, vec_env, all_kwargs=kwargs, **kwargs["trainer"])
     
     # Resuming.
     ckpt_path = kwargs["resume"]["ckpt_path"]

@@ -1,4 +1,5 @@
 import time
+import yaml
 import numpy as np
 import torch
 import torch.nn as nn
@@ -22,7 +23,8 @@ class Trainer():
                  algo,
                  vec_env: gym.vector.VectorEnv,
                  lr=1e-4,
-                 exp_dir="./exp/LunarLander-v2"):
+                 exp_dir="./exp/LunarLander-v2",
+                 all_kwargs=None):
         
         self.net = net
         self.algo = algo
@@ -39,6 +41,10 @@ class Trainer():
         os.makedirs(self.ckpt_dir)
         
         self.log_writer = SummaryWriter(self.log_dir)
+        
+        cfg_path = os.path.join(self.save_dir, "config.yaml")
+        with open(cfg_path, 'w') as f:
+            yaml.dump(all_kwargs, f)        
     
     
     def save_model(self, ckpt_name):
@@ -67,6 +73,10 @@ class Trainer():
         algo = self.algo
         vec_env = self.vec_env
         optimizer = self.optimizer
+        scheduler = torch.optim.lr_scheduler.LinearLR(optimizer,
+                                                      start_factor=1,
+                                                      end_factor=0,
+                                                      total_iters=iters_n)
         net.train()
         
         # Reset the environment.
@@ -91,7 +101,10 @@ class Trainer():
             
                 observation = torch.tensor(observation, dtype=torch.float32)
                 value, policy = net(observation)
-                action = sample_action(policy)
+                try:
+                    action = sample_action(policy)
+                except:
+                    import pdb; pdb.set_trace()
                 pi = policy[list(range(envs_n)), action]
                 old_pi = pi.detach()
                 # import pdb; pdb.set_trace()
@@ -138,8 +151,9 @@ class Trainer():
                     self.log_writer.add_scalar(key, loss, global_step=iter)
                     
             if iter % save_freq == 0 and iter != 0:
-                self.save_model("%7d.pt" % iter)
+                self.save_model("%d.pt" % iter)
             
+            scheduler.step()
 
 if __name__ == '__main__':
     
