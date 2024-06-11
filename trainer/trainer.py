@@ -66,7 +66,8 @@ class Trainer():
               log_freq=20,
               save_freq=5000,
               local_steps=8,
-              steps_n=20):
+              epochs_n=20,
+              batchs_n=8):
         
         # Pseudo code.
         net = self.net
@@ -138,10 +139,11 @@ class Trainer():
                     pis=pis,
                     old_pis=old_pis,
                     policies=policies,
-                    steps_n=steps_n
+                    epochs_n=epochs_n,
+                    batchs_n=batchs_n
                 )
             
-            mean_reward = (mean_reward * iter + torch.mean(torch.stack(rewards)).item()) / (iter + 1)
+            mean_reward = (mean_reward * 9 + torch.mean(torch.stack(rewards)).item()) / (9 + 1)   # Weighted sum.
             
             if iter % log_freq == 0:
                 # log_str = "Rewards: %f" % mean_reward

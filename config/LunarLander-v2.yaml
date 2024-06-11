@@ -1,4 +1,5 @@
 resume:
+  # ckpt_path: "exp/LunarLander-v2/1717988262/ckpt/Final.pt"
   ckpt_path: False
 
 trainer:
@@ -6,16 +7,17 @@ trainer:
   lr: 0.001
 
 train:
-  iters_n: 50000
+  iters_n: 100000
   log_freq: 2
-  save_freq: 10000
+  save_freq: 20000
   local_steps: &local_steps 16
-  steps_n: 15
+  epochs_n: 10
+  batchs_n: 16
 
 net:
   in_channels: 8 # S-size
   out_channels: 4 # A-size
-  inner_channels: 128
+  inner_channels: 64
   layers_n: 5
 
 env:
@@ -26,6 +28,7 @@ algo:
   T: *local_steps
   gamma: 0.99
   lam: 0.95
-  epsilon: 0.1
+  epsilon: 0.2
   v_loss_weight: 1
-  e_loss_weight: 0.05
+  e_loss_weight: 0.01
+  reward_scale: .01

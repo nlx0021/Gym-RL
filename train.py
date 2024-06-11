@@ -11,7 +11,7 @@ from algorithm.PPO import PPO
 
 if __name__ == '__main__':
     
-    conf_path = "./config/CartPole-v1.yaml"
+    conf_path = "./config/LunarLander-v2.yaml"
     with open(conf_path, 'r', encoding="utf-8") as f:
         kwargs = yaml.load(f.read(), Loader=yaml.FullLoader)        
     
