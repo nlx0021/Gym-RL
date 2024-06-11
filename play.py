@@ -12,7 +12,7 @@ from algorithm.PPO import PPO
  
 if __name__ == '__main__':
     
-    conf_path = "exp\\CartPole-v1\\1717936955\\config.yaml"
+    conf_path = "exp\\LunarLander-v2\\1718091872\\config.yaml"
     with open(conf_path, 'r', encoding="utf-8") as f:
         kwargs = yaml.load(f.read(), Loader=yaml.FullLoader)        
     
@@ -21,7 +21,7 @@ if __name__ == '__main__':
     env = gym.make(kwargs["env"]["env_name"], render_mode="human") 
     player = Player()
     
-    ckpt_path = "exp\\CartPole-v1\\1717936955\\ckpt\\Final.pt"
+    ckpt_path = "exp\\LunarLander-v2\\1718091872\\ckpt\\20000.pt"
     ckpt = torch.load(ckpt_path)
     net.load_state_dict(ckpt["model"])
     

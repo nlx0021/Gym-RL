@@ -5,14 +5,14 @@ import gymnasium as gym
 
 from BasicAlgorithm import BasicAlgorithm
 
-
-class PPO(BasicAlgorithm):
+class PhiUpdate(BasicAlgorithm):
     
     def __init__(self,
                  T,
                  gamma,
                  lam,
                  epsilon,
+                 phi,
                  v_loss_weight=1,
                  e_loss_weight=.01):
         
@@ -23,8 +23,7 @@ class PPO(BasicAlgorithm):
                  epsilon,
                  v_loss_weight=1,
                  e_loss_weight=.01
-        )
-    
+        )    
     
     def update(self,
                net,
@@ -64,6 +63,7 @@ class PPO(BasicAlgorithm):
         
         cur_old_pis = torch.stack(old_pis[:-1])   # [T-1, B]
         cur_observations = torch.stack(observations[:-1])
+        
         for _ in range(steps_n):
             # 2. Compute Clip loss.
             cur_values, cur_policies = net(cur_observations.reshape(-1, S))
