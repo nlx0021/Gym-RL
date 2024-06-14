@@ -5,7 +5,8 @@ import torch
 import torch.nn as nn
 import gymnasium as gym
 from tqdm import tqdm
-from torch.utils.tensorboard import SummaryWriter
+from tensorboardX import SummaryWriter
+from memory_profiler import profile
 
 import sys
 import os
@@ -60,7 +61,6 @@ class Trainer():
         self.net.load_state_dict(ckpt['model'])
         self.optimizer.load_state_dict(ckpt["optimizer"])
         
-    
     def train(self,
               iters_n=10000,
               log_freq=20,
@@ -78,13 +78,13 @@ class Trainer():
                                                       start_factor=1,
                                                       end_factor=0,
                                                       total_iters=iters_n)
-        net.train()
         
         # Reset the environment.
         observation, info = vec_env.reset()
         envs_n = len(observation)
         
         mean_reward = 0
+        net.train()
         
         # The main training process.
         for iter in tqdm(range(iters_n)):
@@ -98,35 +98,36 @@ class Trainer():
             old_pis = []
             policies = []
             
-            for t in range(local_steps):
+            with torch.no_grad():
+                for t in range(local_steps):
+                
+                    observation = torch.tensor(observation, dtype=torch.float32)
+                    value, policy = net(observation)
+                    try:
+                        action = sample_action(policy)
+                    except:
+                        import pdb; pdb.set_trace()
+                    pi = policy[list(range(envs_n)), action]
+                    old_pi = pi.clone()
+                    
+                    next_observation, reward, terminated, truncated, info = vec_env.step(action)
+                    
+                    rewards.append(torch.tensor(reward, dtype=torch.float32))
+                    values.append(value)                            # torch.tensor
+                    actions.append(action)
+                    observations.append(observation)                # torch.tensor, need to be inputed in to network.
+                    next_observations.append(next_observation)
+                    pis.append(pi)                          # torch.tensor
+                    old_pis.append(old_pi)                  # torch.tensor
+                    policies.append(policy)                 # torch.tensor
+                    
+                    observation = next_observation
+                    
+                    if terminated.any() or truncated.any():         # FIXME: any() or all()?
+                        break
             
-                observation = torch.tensor(observation, dtype=torch.float32)
-                value, policy = net(observation)
-                try:
-                    action = sample_action(policy)
-                except:
-                    import pdb; pdb.set_trace()
-                pi = policy[list(range(envs_n)), action]
-                old_pi = pi.detach()
-                # import pdb; pdb.set_trace()
-                next_observation, reward, terminated, truncated, info = vec_env.step(action)
-                
-                rewards.append(torch.tensor(reward, dtype=torch.float32).detach())
-                values.append(value)                            # torch.tensor, with gradient.
-                actions.append(action)
-                observations.append(observation)                # torch.tensor, need to be inputed in to network.
-                next_observations.append(next_observation)
-                pis.append(pi)                          # torch.tensor, to compute loss but with gradient.
-                old_pis.append(old_pi)         # torch.tensor, to compute loss but without gradient.
-                policies.append(policy)                 # torch.tensor, to compute e-loss with gradient.
-                
-                observation = next_observation
-                
-                if terminated.any() or truncated.any():         # FIXME: any() or all()?
-                    observation, info = vec_env.reset()
-                    break
-            
-            # simport pdb; pdb.set_trace()
+            mean_reward = (mean_reward * 9 + torch.mean(torch.stack(rewards)).item()) / (9 + 1)   # Weighted sum.
+
             if len(values) > 1:
                 info = algo.update(
                     net,
@@ -142,16 +143,13 @@ class Trainer():
                     epochs_n=epochs_n,
                     batchs_n=batchs_n
                 )
-            
-            mean_reward = (mean_reward * 9 + torch.mean(torch.stack(rewards)).item()) / (9 + 1)   # Weighted sum.
-            
-            if iter % log_freq == 0:
-                # log_str = "Rewards: %f" % mean_reward
-                # print(log_str)
-                self.log_writer.add_scalar("mean reward", mean_reward, global_step=iter)
-                for key, loss in info.items():
-                    self.log_writer.add_scalar(key, loss, global_step=iter)
-                    
+
+                if iter % log_freq == 0:
+                    # log_str = "Rewards: %f" % mean_reward
+                    # print(log_str)
+                    self.log_writer.add_scalar("mean reward", mean_reward, global_step=iter)
+                    for key, loss in info.items():
+                        self.log_writer.add_scalar(key, loss, global_step=iter)                   
             if iter % save_freq == 0 and iter != 0:
                 self.save_model("%d.pt" % iter)
             

@@ -2,6 +2,7 @@ import os
 import torch
 import numpy as np
 import gymnasium as gym
+from memory_profiler import profile
 
 
 class PPO():
@@ -32,7 +33,7 @@ class PPO():
             ) for t in range(1, T+1)
         ]
         
-    
+
     def update(self,
                net,
                optimizer,
@@ -67,10 +68,9 @@ class PPO():
         cur_delta = cur_delta[..., 0]                     # [T-1, B]
         
         cur_adv = torch.matmul(self.weight_mat_list[T-1], cur_delta)      # [T-1, B]
-        cur_adv = cur_adv.detach()
-        # import pdb; pdb.set_trace()
+        cur_adv = cur_adv
         cur_target = cur_rewards + gamma * next_values
-        cur_target = cur_target[..., 0].detach()          # [T-1, B]   
+        cur_target = cur_target[..., 0]           # [T-1, B]   
         
         cur_old_pis = torch.stack(old_pis[:-1])   # [T-1, B]
         cur_observations = torch.stack(observations[:-1])
@@ -81,7 +81,6 @@ class PPO():
         cur_old_pis = cur_old_pis.reshape(-1,)           # [B(T-1)]
         cur_adv = cur_adv.reshape(-1,)                   # [B(T-1)]
         cur_target = cur_target.reshape(-1,)             # [B(T-1)]        
-        
         for _ in range(epochs_n):
             indice = torch.randperm(B * (T-1))
             for iter in range(batchs_n):
@@ -115,7 +114,7 @@ class PPO():
                 loss = clip_loss + self.v_loss_weight * v_loss - self.e_loss_weight * e_loss
                 optimizer.zero_grad()
                 loss.backward()
-                torch.nn.utils.clip_grad_norm_(net.parameters(), 0.5)
+                # torch.nn.utils.clip_grad_norm_(net.parameters(), 0.5)
                 optimizer.step()
             
         return {

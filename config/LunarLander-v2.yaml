@@ -1,18 +1,21 @@
+world:
+  threads_num: 32
+
 resume:
   # ckpt_path: "exp/LunarLander-v2/1717988262/ckpt/Final.pt"
   ckpt_path: False
 
 trainer:
   exp_dir: "./exp/LunarLander-v2"
-  lr: 0.001
+  lr: 0.0001
 
 train:
   iters_n: 100000
-  log_freq: 2
+  log_freq: 10
   save_freq: 20000
   local_steps: &local_steps 16
-  epochs_n: 10
-  batchs_n: 16
+  epochs_n: 3
+  batchs_n: 8
 
 net:
   in_channels: 8 # S-size
@@ -22,7 +25,7 @@ net:
 
 env:
   env_name: "LunarLander-v2"
-  num_envs: 64
+  num_envs: 32
 
 algo:
   T: *local_steps
@@ -31,4 +34,4 @@ algo:
   epsilon: 0.2
   v_loss_weight: 1
   e_loss_weight: 0.01
-  reward_scale: .01
+  reward_scale: 1

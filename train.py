@@ -1,5 +1,6 @@
 import os
 import yaml
+import torch
 import numpy as np
 import gymnasium as gym
 
@@ -14,7 +15,7 @@ if __name__ == '__main__':
     conf_path = "./config/LunarLander-v2.yaml"
     with open(conf_path, 'r', encoding="utf-8") as f:
         kwargs = yaml.load(f.read(), Loader=yaml.FullLoader)        
-    
+    torch.set_num_threads(kwargs["world"]["threads_num"])
     exp_dir = kwargs["trainer"]["exp_dir"]
     net = MLP(**kwargs["net"])
     vec_env = gym.vector.make(kwargs["env"]["env_name"], num_envs=kwargs["env"]["num_envs"])
