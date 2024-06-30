@@ -30,7 +30,7 @@ class PPO():
                 [
                     [0 if i < j else (gamma * lam) ** (i-j) for i in range(t-1)] for j in range(t-1)
                 ]
-            ) for t in range(1, T+1)
+            ) for t in range(1, T+2)
         ]
         
 
@@ -45,6 +45,7 @@ class PPO():
                pis,
                old_pis,
                policies,
+               terminations,
                epochs_n=10,
                batchs_n=8):
         
@@ -52,41 +53,47 @@ class PPO():
         lam = self.lam
         epsilon = self.epsilon
         reward_scale = self.reward_scale
-        
-        # 1. Estimate the Advantage values.
+
         T = len(values)
         S = observations[0].shape[1]
         A = policies[0].shape[1]
-        B = observations[0].shape[0]
-        cur_values  = torch.stack(values[:-1])            # [T-1, B, 1]
-        next_values = torch.stack(values[1:])             # [T-1, B, 1]
-        cur_rewards = torch.stack(rewards[:-1])           
-        cur_rewards = cur_rewards[..., None]              # [T-1, B, 1]
+        B = observations[0].shape[0]        
+        
+        # 0. Step forward.
+        last_value, last_policy = net(next_observations[-1])
+        values.append(last_value.detach())
+        
+        # 1. Estimate the Advantage values.
+        cur_values  = torch.stack(values[:-1])            # [T, B, 1]
+        next_values = torch.stack(values[1:]) * (1 - torch.stack(terminations)[..., None])  # [T, B, 1]
+        cur_rewards = torch.stack(rewards)           
+        cur_rewards = cur_rewards[..., None]              # [T, B, 1]
         cur_rewards = cur_rewards * self.reward_scale
         
         cur_delta = cur_rewards + gamma * next_values - cur_values
-        cur_delta = cur_delta[..., 0]                     # [T-1, B]
+        cur_delta = cur_delta[..., 0]                     # [T, B]
         
-        cur_adv = torch.matmul(self.weight_mat_list[T-1], cur_delta)      # [T-1, B]
+        cur_adv = torch.matmul(self.weight_mat_list[T], cur_delta)      # [T, B]
         cur_adv = cur_adv
         cur_target = cur_rewards + gamma * next_values
-        cur_target = cur_target[..., 0]           # [T-1, B]   
+        cur_target = cur_target[..., 0]           # [T, B]   
         
-        cur_old_pis = torch.stack(old_pis[:-1])   # [T-1, B]
-        cur_observations = torch.stack(observations[:-1])
+        cur_old_pis = torch.stack(old_pis)        # [T, B]
+        cur_observations = torch.stack(observations)
         
         actions = torch.stack([torch.tensor(action) for action in actions])
         actions = actions.reshape(-1,)
         
-        cur_old_pis = cur_old_pis.reshape(-1,)           # [B(T-1)]
-        cur_adv = cur_adv.reshape(-1,)                   # [B(T-1)]
-        cur_target = cur_target.reshape(-1,)             # [B(T-1)]        
+        cur_old_pis = cur_old_pis.reshape(-1,)           # [BT]
+        cur_adv = cur_adv.reshape(-1,)                   # [BT]
+        cur_target = cur_target.reshape(-1,)             # [BT]   
+    
         for _ in range(epochs_n):
-            indice = torch.randperm(B * (T-1))
+            indice = torch.randperm(B * T)
             for iter in range(batchs_n):
                 batch_indices = indice[
-                                int(iter * ((T-1) * B / batchs_n)): int((iter + 1) * (
-                                (T-1) * B / batchs_n))]
+                                int(iter * (T * B / batchs_n)): int((iter + 1) * (
+                                T * B / batchs_n))]
                 # 2. Compute Clip loss.
                 batch_cur_values, batch_cur_policies = net(cur_observations.reshape(-1, S)[batch_indices])     # [batch_size, S]
                 batch_cur_pis = torch.stack(

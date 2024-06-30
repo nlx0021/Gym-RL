@@ -15,6 +15,7 @@ sys.path.append(os.path.abspath(os.path.join(".")))
 from utils.utils import *
 from network.MLP import MLP
 from algorithm.PPO import PPO
+from trainer.player import Player
 
 
 class Trainer():
@@ -22,6 +23,7 @@ class Trainer():
     def __init__(self,
                  net: MLP,
                  algo,
+                 eval_env: gym.Env,
                  vec_env: gym.vector.VectorEnv,
                  lr=1e-4,
                  exp_dir="./exp/LunarLander-v2",
@@ -45,7 +47,10 @@ class Trainer():
         
         cfg_path = os.path.join(self.save_dir, "config.yaml")
         with open(cfg_path, 'w') as f:
-            yaml.dump(all_kwargs, f)        
+            yaml.dump(all_kwargs, f)      
+            
+        self.player = Player() 
+        self.eval_env = eval_env
     
     
     def save_model(self, ckpt_name):
@@ -61,10 +66,24 @@ class Trainer():
         self.net.load_state_dict(ckpt['model'])
         self.optimizer.load_state_dict(ckpt["optimizer"])
         
+        
+    def eval(self,
+             global_step,
+             evals_num=32):
+        
+        total_reward = self.player.play(self.net,
+                                        self.eval_env,
+                                        silence=True,
+                                        evals_num=evals_num)
+        
+        self.log_writer.add_scalar("game total score", total_reward, global_step=global_step)
+        
+        
     def train(self,
               iters_n=10000,
               log_freq=20,
               save_freq=5000,
+              eval_freq=2000,
               local_steps=8,
               epochs_n=20,
               batchs_n=8):
@@ -97,6 +116,7 @@ class Trainer():
             pis = []
             old_pis = []
             policies = []
+            terminations = []
             
             with torch.no_grad():
                 for t in range(local_steps):
@@ -116,10 +136,11 @@ class Trainer():
                     values.append(value)                            # torch.tensor
                     actions.append(action)
                     observations.append(observation)                # torch.tensor, need to be inputed in to network.
-                    next_observations.append(next_observation)
+                    next_observations.append(torch.tensor(next_observation, dtype=torch.float32))
                     pis.append(pi)                          # torch.tensor
                     old_pis.append(old_pi)                  # torch.tensor
                     policies.append(policy)                 # torch.tensor
+                    terminations.append(torch.tensor(terminated, dtype=torch.int))
                     
                     observation = next_observation
                     
@@ -140,6 +161,7 @@ class Trainer():
                     pis=pis,
                     old_pis=old_pis,
                     policies=policies,
+                    terminations=terminations,
                     epochs_n=epochs_n,
                     batchs_n=batchs_n
                 )
@@ -152,6 +174,9 @@ class Trainer():
                         self.log_writer.add_scalar(key, loss, global_step=iter)                   
             if iter % save_freq == 0 and iter != 0:
                 self.save_model("%d.pt" % iter)
+            
+            if iter % eval_freq == 0 and iter != 0:
+                self.eval(global_step=iter)
             
             scheduler.step()
 

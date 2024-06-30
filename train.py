@@ -19,8 +19,9 @@ if __name__ == '__main__':
     exp_dir = kwargs["trainer"]["exp_dir"]
     net = MLP(**kwargs["net"])
     vec_env = gym.vector.make(kwargs["env"]["env_name"], num_envs=kwargs["env"]["num_envs"])
+    env = gym.make(kwargs["env"]["env_name"])
     algo = PPO(**kwargs["algo"])
-    trainer = Trainer(net, algo, vec_env, all_kwargs=kwargs, **kwargs["trainer"])
+    trainer = Trainer(net, algo, env, vec_env, all_kwargs=kwargs, **kwargs["trainer"])
     
     # Resuming.
     ckpt_path = kwargs["resume"]["ckpt_path"]

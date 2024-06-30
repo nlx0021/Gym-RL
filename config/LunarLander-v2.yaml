@@ -13,8 +13,9 @@ train:
   iters_n: 100000
   log_freq: 10
   save_freq: 20000
+  eval_freq: 500
   local_steps: &local_steps 16
-  epochs_n: 3
+  epochs_n: 10
   batchs_n: 8
 
 net:
