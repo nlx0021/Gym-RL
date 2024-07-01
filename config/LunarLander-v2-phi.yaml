@@ -1,0 +1,46 @@
+world:
+  threads_num: 32
+
+resume:
+  # ckpt_path: "exp/LunarLander-v2/1717988262/ckpt/Final.pt"
+  ckpt_path: False
+
+trainer:
+  exp_dir: "./exp/LunarLander-v2"
+  lr: 0.0001
+
+train:
+  iters_n: 100000
+  log_freq: 10
+  save_freq: 20000
+  eval_freq: 500
+  local_steps: &local_steps 16
+  epochs_n: 10
+  batchs_n: 8
+
+net:
+  in_channels: 8 # S-size
+  out_channels: 4 # A-size
+  inner_channels: 64
+  layers_n: 5
+
+env:
+  env_name: "LunarLander-v2"
+  num_envs: 32
+
+alg: "phi_update"
+
+algo:
+  T: *local_steps
+  gamma: 0.99
+  lam: 0.95
+  epsilon: 0.2
+  v_loss_weight: 1
+  e_loss_weight: 0.01
+  reward_scale: 1
+  eta: 1
+
+phi:
+  name: "log"
+  p: 3
+  q: 5

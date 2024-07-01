@@ -22,6 +22,8 @@ env:
   env_name: "CartPole-v1"
   num_envs: 8
 
+alg: "PPO"
+
 algo:
   T: *local_steps
   gamma: 0.99

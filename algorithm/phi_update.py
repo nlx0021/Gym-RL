@@ -2,25 +2,24 @@ import os
 import torch
 import numpy as np
 import gymnasium as gym
-from memory_profiler import profile
+
 
 from algorithm.BasicAlgorithm import BasicAlgorithm
 
-
-class PPO(BasicAlgorithm):
+class PhiUpdate(BasicAlgorithm):
     
     def __init__(self,
                  T,
                  gamma,
                  lam,
                  epsilon,
+                 phi,
                  v_loss_weight=1,
                  e_loss_weight=.01,
                  reward_scale=.01,
-                 phi=None,
-                 eta=None):
+                 eta=1):
         
-        super(PPO, self).__init__(
+        super(PhiUpdate, self).__init__(
                  T,
                  gamma,
                  lam,
@@ -31,8 +30,7 @@ class PPO(BasicAlgorithm):
                  phi=phi,
                  eta=eta
         )    
-        
-
+    
     def update(self,
                net,
                optimizer,
@@ -83,9 +81,12 @@ class PPO(BasicAlgorithm):
         actions = torch.stack([torch.tensor(action) for action in actions])
         actions = actions.reshape(-1,)
         
-        cur_old_pis = cur_old_pis.reshape(-1,)           # [BT]
-        cur_adv = cur_adv.reshape(-1,)                   # [BT]
-        cur_target = cur_target.reshape(-1,)             # [BT]   
+        cur_old_pis = cur_old_pis.reshape(-1,)              # [BT]
+        cur_old_policies = torch.stack(policies)
+        cur_old_policies = cur_old_policies.reshape(-1,A)   # [BT, A]
+        cur_adv = cur_adv.reshape(-1,)                      # [BT]
+        cur_target = cur_target.reshape(-1,)                # [BT]  
+        cur_phi_adv = self.phi(self.eta * cur_adv)          # [BT] 
     
         for _ in range(epochs_n):
             indice = torch.randperm(B * T)
@@ -101,30 +102,33 @@ class PPO(BasicAlgorithm):
                 batch_cur_values = batch_cur_values.reshape(-1,)
                 batch_cur_r = batch_cur_pis / cur_old_pis[batch_indices] 
             
-                clip_loss = -torch.mean(
-                    torch.min(
-                        batch_cur_r * cur_adv[batch_indices],
-                        torch.clamp(batch_cur_r, 1-epsilon, 1+epsilon) * cur_adv[batch_indices]
-                    )
+                # clip_loss = -torch.mean(
+                #     torch.min(
+                #         batch_cur_r * cur_adv[batch_indices],
+                #         torch.clamp(batch_cur_r, 1-epsilon, 1+epsilon) * cur_adv[batch_indices]
+                #     )
+                # )
+                adv_loss = -torch.mean(
+                    batch_cur_r * cur_phi_adv[batch_indices]
                 )
                 
                 # 3. Compute v-loss.
                 v_loss = self.value_loss(cur_target[batch_indices], batch_cur_values)
                 
-                # 4. Compute e-loss.
+                # 4. Compute KL-loss.
                 min_real = torch.finfo(batch_cur_policies.dtype).min
-                e_loss = -torch.mean(torch.sum(torch.clamp(batch_cur_policies, min=min_real) * torch.log(batch_cur_policies), dim=-1))
-                # import pdb; pdb.set_trace()
+                KL_loss = torch.mean(torch.sum(torch.clamp(batch_cur_policies, min=min_real) \
+                        * torch.log(torch.clamp(batch_cur_policies, min=min_real) / torch.clamp(cur_old_policies[batch_indices], min=min_real)), dim=-1))
                 
                 # 5. Update.
-                loss = clip_loss + self.v_loss_weight * v_loss - self.e_loss_weight * e_loss
+                loss = adv_loss + self.v_loss_weight * v_loss + KL_loss
                 optimizer.zero_grad()
                 loss.backward()
                 # torch.nn.utils.clip_grad_norm_(net.parameters(), 0.5)
                 optimizer.step()
             
         return {
-            "clip_loss": clip_loss.detach().cpu().item(),
+            "adv_loss": adv_loss.detach().cpu().item(),
             "v_loss": v_loss.detach().cpu().item(),
-            "e_loss": e_loss.detach().cpu().item()
+            "KL_loss": KL_loss.detach().cpu().item()
         }
