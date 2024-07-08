@@ -6,12 +6,12 @@ resume:
   ckpt_path: False
 
 trainer:
-  exp_dir: "./exp/LunarLander-v2"
+  exp_dir: "./exp/LunarLander-v2-Scale-Power-9-1"
   lr: 0.0001
 
 train:
   iters_n: 100000
-  log_freq: 10
+  log_freq: 100
   save_freq: 20000
   eval_freq: 500
   local_steps: &local_steps 16
@@ -37,10 +37,10 @@ algo:
   epsilon: 0.2
   v_loss_weight: 1
   e_loss_weight: 0.01
-  reward_scale: 1
+  reward_scale: 0.01        # To scale reward lower than 1.
   eta: 1
 
 phi:
-  name: "log"
-  p: 3
-  q: 5
+  name: "power"
+  p: 9
+  q: 1
